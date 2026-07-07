@@ -12,19 +12,33 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import { useGoal } from "../../hooks/useGoal";
-import { useChat } from "../../hooks/useChat";
-import { GoalPlanCard } from "../../components/GoalPlanCard";
-import { ChatBubble } from "../../components/ChatBubble";
-import { ChatInput } from "../../components/ChatInput";
-import type { GoalPlanStep } from "../../lib/types";
+import { useGoal } from "../hooks/useGoal";
+import { useChat } from "../hooks/useChat";
+import { useLocation } from "../hooks/useLocation";
+import { usePhotos } from "../hooks/usePhotos";
+import { GoalPlanCard } from "../components/GoalPlanCard";
+import { ChatBubble } from "../components/ChatBubble";
+import { ChatInput } from "../components/ChatInput";
+import { LocationIndicator } from "../components/LocationIndicator";
+import { PhotoCapture } from "../components/PhotoCapture";
+import { PhotoGrid } from "../components/PhotoGrid";
+import type { GoalPlanStep } from "../lib/types";
 
 export default function GoalScreen() {
   const [title, setTitle] = useState("");
   const [tips, setTips] = useState("");
+  const [showPhotos, setShowPhotos] = useState(false);
   const { activeGoal, loading, createGoal, activateGoal, completeGoal, loadActiveGoal } =
     useGoal();
   const { messages, sendMessage } = useChat(activeGoal?.id);
+  const isActive = activeGoal?.status === "active";
+  const { hasPermission, currentLocation } = useLocation({
+    goalId: activeGoal?.id,
+    enabled: isActive,
+  });
+  const { photos, uploading, pickAndUpload, takeAndUpload } = usePhotos(
+    isActive ? activeGoal?.id : undefined
+  );
 
   useEffect(() => {
     loadActiveGoal();
@@ -36,20 +50,21 @@ export default function GoalScreen() {
       const result = await createGoal(title.trim());
       setTips(result.tips || "");
       setTitle("");
-    } catch (error: any) {
-      Alert.alert("Error", error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      Alert.alert("Error", message);
     }
   };
 
   const handleActivate = async () => {
     try {
       await activateGoal();
-    } catch (error: any) {
-      Alert.alert("Error", error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      Alert.alert("Error", message);
     }
   };
 
-  // No active goal — show goal creation
   if (!activeGoal) {
     return (
       <View style={styles.container}>
@@ -81,7 +96,6 @@ export default function GoalScreen() {
     );
   }
 
-  // Planning state — show plan for review
   if (activeGoal.status === "planning") {
     return (
       <ScrollView style={styles.container}>
@@ -97,7 +111,6 @@ export default function GoalScreen() {
     );
   }
 
-  // Active state — show chat
   return (
     <KeyboardAvoidingView
       style={styles.chatContainer}
@@ -105,21 +118,46 @@ export default function GoalScreen() {
       keyboardVerticalOffset={90}
     >
       <View style={styles.activeHeader}>
-        <Text style={styles.activeTitle}>{activeGoal.title}</Text>
-        <TouchableOpacity onPress={completeGoal}>
-          <Text style={styles.completeLink}>Complete</Text>
-        </TouchableOpacity>
+        <View style={styles.headerLeft}>
+          <Text style={styles.activeTitle}>{activeGoal.title}</Text>
+          <LocationIndicator
+            hasPermission={hasPermission}
+            isTracking={currentLocation !== null}
+          />
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={() => setShowPhotos((v) => !v)}>
+            <Text style={styles.toggleLink}>
+              {showPhotos ? "Chat" : `Photos (${photos.length})`}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={completeGoal}>
+            <Text style={styles.completeLink}>Complete</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <FlatList
-        data={messages}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <ChatBubble message={item} />}
-        contentContainerStyle={{ padding: 16 }}
-        style={{ flex: 1 }}
+      {showPhotos ? (
+        <ScrollView style={{ flex: 1 }}>
+          <PhotoGrid photos={photos} />
+        </ScrollView>
+      ) : (
+        <FlatList
+          data={messages}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <ChatBubble message={item} />}
+          contentContainerStyle={{ padding: 16 }}
+          style={{ flex: 1 }}
+        />
+      )}
+
+      <PhotoCapture
+        uploading={uploading}
+        onPickFromGallery={pickAndUpload}
+        onTakePhoto={takeAndUpload}
       />
 
-      <ChatInput onSend={sendMessage} />
+      <ChatInput onSend={async (content, visibility) => { await sendMessage(content, visibility); }} />
     </KeyboardAvoidingView>
   );
 }
@@ -159,11 +197,14 @@ const styles = StyleSheet.create({
   activeHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },
-  activeTitle: { fontSize: 16, fontWeight: "600", flex: 1 },
+  headerLeft: { flex: 1, gap: 4 },
+  headerRight: { flexDirection: "row", gap: 16, alignItems: "center" },
+  activeTitle: { fontSize: 16, fontWeight: "600" },
+  toggleLink: { fontSize: 13, color: "#0077cc", fontWeight: "600" },
   completeLink: { fontSize: 14, color: "#888", fontWeight: "600" },
 });

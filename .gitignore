@@ -3,11 +3,8 @@
 # dependencies
 node_modules/
 
-# Expo
-.expo/
+# Build
 dist/
-web-build/
-expo-env.d.ts
 
 # Native
 .kotlin/
@@ -31,6 +28,7 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
 
 # typescript
@@ -38,6 +36,6 @@ yarn-error.*
 
 example
 
-# generated native folders
+# generated native folders (created by setup-mac.sh)
 /ios
 /android

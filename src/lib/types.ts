@@ -44,3 +44,28 @@ export type Message = {
   visibility: Visibility;
   created_at: string;
 };
+
+export type LocationPing = {
+  id: string;
+  goal_id: string;
+  user_id: string;
+  lat: number;
+  lng: number;
+  created_at: string;
+};
+
+export type GoalPhoto = {
+  id: string;
+  goal_id: string;
+  user_id: string;
+  image_url: string;
+  caption: string;
+  created_at: string;
+};
+
+export type GoalWatcher = {
+  id: string;
+  goal_id: string;
+  friend_id: string;
+  joined_at: string;
+};

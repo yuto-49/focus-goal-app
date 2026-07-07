@@ -6,9 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
-import { useAuth } from "../../hooks/useAuth";
-import { supabase } from "../../lib/supabase";
-import type { Goal } from "../../lib/types";
+import { useAuth } from "../hooks/useAuth";
+import { supabase } from "../lib/supabase";
+import type { Goal } from "../lib/types";
 
 export default function ProfileScreen() {
   const { session, signOut } = useAuth();

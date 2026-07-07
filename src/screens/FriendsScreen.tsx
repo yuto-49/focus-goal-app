@@ -8,18 +8,25 @@ import {
   StyleSheet,
   Alert,
 } from "react-native";
-import { supabase } from "../../lib/supabase";
-import { FriendRow } from "../../components/FriendRow";
-import type { Profile, Friendship } from "../../lib/types";
-import { useAuth } from "../../hooks/useAuth";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { supabase } from "../lib/supabase";
+import { FriendRow } from "../components/FriendRow";
+import type { Profile, Friendship } from "../lib/types";
+import { useAuth } from "../hooks/useAuth";
+import type { RootStackParamList } from "../navigation/types";
+
+type FriendsNav = NativeStackNavigationProp<RootStackParamList>;
 
 type FriendWithProfile = {
   friendship: Friendship;
   profile: Profile;
+  activeGoalId?: string;
 };
 
 export default function FriendsScreen() {
   const { session } = useAuth();
+  const navigation = useNavigation<FriendsNav>();
   const [friends, setFriends] = useState<FriendWithProfile[]>([]);
   const [searchName, setSearchName] = useState("");
 
@@ -49,6 +56,16 @@ export default function FriendsScreen() {
 
     if (!profiles) return;
 
+    const { data: activeGoals } = await supabase
+      .from("goals")
+      .select("id, user_id")
+      .in("user_id", friendIds)
+      .eq("status", "active");
+
+    const activeGoalMap = new Map(
+      (activeGoals || []).map((g) => [g.user_id, g.id])
+    );
+
     const profileMap = new Map(profiles.map((p) => [p.id, p]));
 
     const result: FriendWithProfile[] = friendships
@@ -56,7 +73,11 @@ export default function FriendsScreen() {
         const friendId = f.user_id === userId ? f.friend_id : f.user_id;
         const profile = profileMap.get(friendId);
         if (!profile) return null;
-        return { friendship: f as Friendship, profile: profile as Profile };
+        return {
+          friendship: f as Friendship,
+          profile: profile as Profile,
+          activeGoalId: activeGoalMap.get(friendId),
+        };
       })
       .filter(Boolean) as FriendWithProfile[];
 
@@ -117,6 +138,16 @@ export default function FriendsScreen() {
     loadFriends();
   };
 
+  const handleWatch = async (goalId: string) => {
+    if (!userId) return;
+
+    await supabase
+      .from("goal_watchers")
+      .upsert({ goal_id: goalId, friend_id: userId }, { onConflict: "goal_id,friend_id" });
+
+    navigation.navigate("Watch", { goalId });
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.addSection}>
@@ -139,7 +170,13 @@ export default function FriendsScreen() {
             profile={item.profile}
             friendship={item.friendship}
             currentUserId={userId!}
+            activeGoalId={item.activeGoalId}
             onAccept={() => handleAccept(item.friendship.id)}
+            onWatch={
+              item.activeGoalId
+                ? () => handleWatch(item.activeGoalId!)
+                : undefined
+            }
           />
         )}
         ListEmptyComponent={

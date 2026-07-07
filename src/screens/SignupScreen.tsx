@@ -7,22 +7,30 @@ import {
   StyleSheet,
   Alert,
 } from "react-native";
-import { Link } from "expo-router";
-import { useAuth } from "../../hooks/useAuth";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useAuth } from "../hooks/useAuth";
+import type { AuthStackParamList } from "../navigation/types";
 
-export default function LoginScreen() {
+type SignupNav = NativeStackNavigationProp<AuthStackParamList, "Signup">;
+
+export default function SignupScreen() {
+  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { signUp } = useAuth();
+  const navigation = useNavigation<SignupNav>();
 
-  const handleLogin = async () => {
-    if (!email || !password) return;
+  const handleSignup = async () => {
+    if (!displayName || !email || !password) return;
     setLoading(true);
     try {
-      await signIn(email, password);
-    } catch (error: any) {
-      Alert.alert("Login failed", error.message);
+      await signUp(email, password, displayName);
+      Alert.alert("Success", "Check your email to confirm your account.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      Alert.alert("Signup failed", message);
     } finally {
       setLoading(false);
     }
@@ -30,9 +38,14 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Focus Goal</Text>
-      <Text style={styles.subtitle}>Achieve goals. Stay focused.</Text>
+      <Text style={styles.title}>Create Account</Text>
 
+      <TextInput
+        style={styles.input}
+        placeholder="Display Name"
+        value={displayName}
+        onChangeText={setDisplayName}
+      />
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -51,17 +64,20 @@ export default function LoginScreen() {
 
       <TouchableOpacity
         style={styles.button}
-        onPress={handleLogin}
+        onPress={handleSignup}
         disabled={loading}
       >
         <Text style={styles.buttonText}>
-          {loading ? "Signing in..." : "Sign In"}
+          {loading ? "Creating account..." : "Sign Up"}
         </Text>
       </TouchableOpacity>
 
-      <Link href="/(auth)/signup" style={styles.link}>
-        <Text style={styles.linkText}>Don't have an account? Sign up</Text>
-      </Link>
+      <TouchableOpacity
+        style={styles.link}
+        onPress={() => navigation.navigate("Login")}
+      >
+        <Text style={styles.linkText}>Already have an account? Sign in</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -76,12 +92,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#666",
     textAlign: "center",
     marginBottom: 40,
   },

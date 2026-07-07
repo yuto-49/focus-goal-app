@@ -5,11 +5,21 @@ type Props = {
   profile: Profile;
   friendship: Friendship;
   currentUserId: string;
+  activeGoalId?: string;
   onAccept?: () => void;
+  onWatch?: () => void;
 };
 
-export function FriendRow({ profile, friendship, currentUserId, onAccept }: Props) {
+export function FriendRow({
+  profile,
+  friendship,
+  currentUserId,
+  activeGoalId,
+  onAccept,
+  onWatch,
+}: Props) {
   const isPending = friendship.status === "pending";
+  const isAccepted = friendship.status === "accepted";
   const canAccept = isPending && friendship.friend_id === currentUserId;
 
   return (
@@ -27,11 +37,20 @@ export function FriendRow({ profile, friendship, currentUserId, onAccept }: Prop
             {canAccept ? "Wants to be your friend" : "Request sent"}
           </Text>
         )}
+        {isAccepted && activeGoalId && (
+          <Text style={styles.activeGoal}>Has an active goal</Text>
+        )}
       </View>
 
       {canAccept && onAccept && (
         <TouchableOpacity style={styles.acceptButton} onPress={onAccept}>
           <Text style={styles.acceptText}>Accept</Text>
+        </TouchableOpacity>
+      )}
+
+      {isAccepted && activeGoalId && onWatch && (
+        <TouchableOpacity style={styles.watchButton} onPress={onWatch}>
+          <Text style={styles.watchText}>Watch</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -59,6 +78,7 @@ const styles = StyleSheet.create({
   info: { flex: 1 },
   name: { fontSize: 16, fontWeight: "500" },
   pending: { fontSize: 12, color: "#888", marginTop: 2 },
+  activeGoal: { fontSize: 12, color: "#22c55e", marginTop: 2 },
   acceptButton: {
     backgroundColor: "#000",
     borderRadius: 6,
@@ -66,4 +86,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   acceptText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  watchButton: {
+    backgroundColor: "#0077cc",
+    borderRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  watchText: { color: "#fff", fontSize: 13, fontWeight: "600" },
 });
