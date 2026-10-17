@@ -6,6 +6,12 @@ const anthropic = new Anthropic({
   apiKey: Deno.env.get("ANTHROPIC_API_KEY")!,
 });
 
+// Service-role client for system inserts (LLM messages) that bypass RLS
+const supabaseAdmin = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+);
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -16,7 +22,12 @@ Deno.serve(async (req) => {
     });
   }
 
-  const authHeader = req.headers.get("authorization")!;
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader) {
+    return Response.json({ error: "Missing authorization header" }, { status: 401 });
+  }
+
+  // User-scoped client for auth verification and user message insertion
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -109,8 +120,8 @@ Rules:
   const responseText =
     response.content[0].type === "text" ? response.content[0].text : "";
 
-  // Save Claude's response
-  const { data: llmMessage, error: llmError } = await supabase
+  // Save Claude's response using service-role client (RLS only allows sender_type='user' inserts)
+  const { data: llmMessage, error: llmError } = await supabaseAdmin
     .from("messages")
     .insert({
       goal_id,

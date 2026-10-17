@@ -39,3 +39,5 @@ example
 # generated native folders (created by setup-mac.sh)
 /ios
 /android
+.expo/
+*.stackdump
